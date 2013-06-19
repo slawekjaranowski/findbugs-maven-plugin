@@ -156,6 +156,43 @@ class XDocsReporter {
 	}
 
 
+	/**
+	 * Find the absolute path for given className
+	 *
+	 * @return The absolute to class
+	 *
+	 */
+        protected String getPathForClass(String className) {
+
+              def pathClass = className.replaceAll("[.]", "/").replaceAll("[\$].*", "") + "."
+
+              findbugsResults.FindBugsSummary.FileStats.each() { fileStats ->
+                      if ( fileStats.@path.text().startsWith(pathClass) ) {
+                              pathClass = fileStats.@path.text()
+                              return
+                      }
+              }
+
+              compileSourceRoots.each {compileSourceRoot ->
+                      File f = new File(compileSourceRoot + File.separator + pathClass)
+		      if ( f.exists() ) {
+                              pathClass = f.getAbsolutePath()
+			      return
+		      }
+	      }
+
+
+	      testSourceRoots.each {testSourceRoot ->
+                      File f = new File(testSourceRoot + File.separator + pathClass)
+		      if ( f.exists() ) {
+                              pathClass = f.getAbsolutePath()
+			      return
+		      }
+	      }
+
+              return pathClass
+        }
+
 	public void generateReport() {
 
 		def xmlBuilder = new StreamingMarkupBuilder()
@@ -185,8 +222,10 @@ class XDocsReporter {
 				}
 
 				bugClasses.each() {bugClass ->
+					def bugClassPath = getPathForClass(bugClass)
+					log.debug("finish bugClassPath is ${bugClassPath}")
 					log.debug("finish bugClass is ${bugClass}")
-					file(classname: bugClass) {
+					file(classname: bugClass, sourcepath: bugClassPath) {
 						findbugsResults.BugInstance.each() {bugInstance ->
 
 							if ( bugInstance.Class.@classname.text() == bugClass ) {
